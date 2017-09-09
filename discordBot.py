@@ -13,6 +13,23 @@ Config = configparser.ConfigParser()
 Config.read("discordBot.ini")
 token = Config.get("tokens","token")
 
+def submissionSearch(query):
+    """Simple Elasticsearch Query"""
+    headers={'Accept': 'application/json', 'Content-type': 'application/json'}
+    uri = "http://localhost:9200/rs_deltab/submissions/_search"
+    query = json.dumps({"query":{"bool":{"filter":[{"range":{"num_comments":{"gte":50}}}],"must":{"multi_match":{"fields":["selftext","title"],"query": query}}}},"size":5})
+    response = requests.get(uri, data=query, headers=headers)
+    response = json.loads(response.text)
+    print (str(response))
+    responses = []
+    for hit in response["hits"]["hits"]:
+        responses.append(hit["_source"])
+    responses.sort(key=lambda x: (int(x['score'])), reverse=True)
+    result = ""
+    for hit in responses:
+        result += "https://www.reddit.com" + hit['permalink'] + "\n"
+    return result
+
 def search(query):
     """Simple Elasticsearch Query"""
     headers={'Accept': 'application/json', 'Content-type': 'application/json'}
@@ -38,8 +55,6 @@ def answerQuestion(query):
     for hit in response["hits"]["hits"]:
         responses.append(hit["_source"])
     responses.sort(key=lambda x: (int(x['score'])), reverse=True)
-    for test in responses:
-        print (test['score'])
     for hit in responses:
         source = hit
         if 'selftext' in source and source['selftext'] is not None:
@@ -79,10 +94,13 @@ async def on_message(message):
         elif message.content.startswith('!pushshift analyze user'):
             author = str(message.content).split()[-1]
             await client.send_message(message.channel, author)
+        elif message.content.startswith('!pushshift submission search'):
+            query = str(message.content)[29:]
+            response = submissionSearch(query)
+            await client.send_message(message.channel, response)
         elif message.content.startswith('!pushshift elasticsearch'):
             es_string = str(message.content)[25:]
             results = json.dumps(search(es_string))
-            print(results)
             if len(results) < 2000:
                 await client.send_message(message.channel, results)
             else:
