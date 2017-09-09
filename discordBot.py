@@ -5,7 +5,13 @@ import asyncio
 import ujson as json
 import requests
 import time
+import configparser
 from operator import itemgetter
+
+
+Config = configparser.ConfigParser()
+Config.read("discordBot.ini")
+token = Config.get("tokens","token")
 
 def search(query):
     """Simple Elasticsearch Query"""
@@ -87,4 +93,4 @@ async def on_message(message):
                 response = answerQuestion(str(message.content))
                 await client.send_message(message.channel, response)
 
-client.run('MzU1ODYzMzg4NTc4MTE5Njgz.DJS_KQ.m3pDLqqFqlJOrD-iCHMj-0U9g_Y')
+client.run(token)
